@@ -74,7 +74,7 @@ CONFIG.each do |c|
       name = task.name.get
       created = task.creation_date.get
 
-      if name =~ /^([[:alpha:]]+\/[[a-zA-Z0-9]]+\/\d+) - (.*?) \(([^\)]+)\)$/
+      if name =~ /^([[:alpha:]]+\/[[-_.a-zA-Z0-9]]+\/\d+) - (.*?) \(([^\)]+)\)$/
           key = $1
           summary = $2
           reporter = $3
