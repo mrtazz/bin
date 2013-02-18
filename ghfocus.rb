@@ -1,6 +1,11 @@
 #!/usr/bin/env ruby
 
 #
+# Script to fetch all issues assigned to you from GitHub (Enterprise) and add
+# it to your OmniFocus inbox with the configured context
+#
+# Thanks to @ickymettle for inspiration and letting me base this on his code
+#
 # create an oauth token with:
 # curl -k -s -u mrtazz -d '{ "scopes": [ "repo" ], "note": "ghfocus cli"}'\
 # -X POST https://api.github.com/authorizations
@@ -67,10 +72,10 @@ CONFIG.each do |c|
 
   # connect to OmniFocus
   omnifocus = Appscript.app('OmniFocus')
-  omnifocus_jira = omnifocus.default_document
-  jira_context = omnifocus.default_document.flattened_contexts[CONTEXT]
+  omnifocus_doc = omnifocus.default_document
+  github_context = omnifocus.default_document.flattened_contexts[CONTEXT]
 
-  omnifocus_jira.flattened_tasks.get.each do |task|
+  omnifocus_doc.flattened_tasks.get.each do |task|
       name = task.name.get
       created = task.creation_date.get
 
@@ -86,23 +91,19 @@ CONFIG.each do |c|
       end
   end
 
-  ## TODO: need to handle jobs being closed in jira (are completed in OF), and completed in OF - use comment in notes field of OF as the closing DONE comment in jira
-
-  # sync jira to OF
+  # sync to OF
   skipped = 0
   synced  = 0
   gh_data.each do |key,props|
       if omni_data.has_key?(key)
           skipped += 1
-          ## TODO: update name and reporter if it has changed
       else
-          # TODO: fix timezones (inserting as UTC)
           name = sprintf("%s - %s (%s)", key, props[:summary], props[:reporter])
           link = props[:url]
           desc = sprintf("REF: %s\n\n%s", link, props[:desc])
 
           puts "** Adding #{key}"
-          omnifocus_jira.make(:new => :inbox_task, :with_properties => { :name => name, :creation_date => props[:created], :note => desc, :context => jira_context })
+          omnifocus_doc.make(:new => :inbox_task, :with_properties => { :name => name, :creation_date => props[:created], :note => desc, :context => github_context })
           synced += 1
       end
   end
