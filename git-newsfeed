@@ -87,7 +87,7 @@ def format_events(events)
         message = "#{red(event["actor"]["login"])} pushed to #{cyan(event["payload"]["ref"].split("/")[-1])} at #{green(event["repo"]["name"])}"
       when "TeamAddEvent"
       when "WatchEvent"
-        message = "#{red(event["actor"]["login"])} starred  #{green(event["repo"]["name"])}"
+        message = "#{red(event["actor"]["login"])} starred #{green(event["repo"]["name"])}"
       else
     end
     puts message + " #{purple(time.ago_in_words)}"
