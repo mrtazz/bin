@@ -49,15 +49,28 @@ def mark_notifications_as_read(token, host="https://api.github.com",
     end
 end
 
-def get_authtoken_from_gitconfig
-    `git config github.token`
+def get_authtoken_from_gitconfig(enterprise=false)
+    if enterprise
+        `git config github-enterprise.token`
+    else
+        `git config github.token`
+    end
 end
 
-if ARGV[0] == "mark-read"
-    mark_notifications_as_read(get_authtoken_from_gitconfig)
+def get_enterprise_host
+    `git config github-enterprise.host`.gsub("\n", "")
+end
+
+$enterprise = ARGV.include? "--enterprise"
+$host = $enterprise ? get_enterprise_host : "https://api.github.com"
+$path = $enterprise ? "/api/v3/notifications" : "/notifications"
+
+if ARGV.include? "mark-read"
+    mark_notifications_as_read(get_authtoken_from_gitconfig($enterprise), $host, $path)
     puts "Marked all notifications as read"
 else
-    notifications = get_github_notifications(get_authtoken_from_gitconfig)
+    notifications = get_github_notifications(get_authtoken_from_gitconfig($enterprise),
+                                             $host, $path)
     maxtypelength = 11
 
     notifications.each do |n|
