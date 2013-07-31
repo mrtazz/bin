@@ -103,7 +103,12 @@ CONFIG.each do |c|
           desc = sprintf("REF: %s\n\n%s", link, props[:desc])
 
           puts "** Adding #{key}"
-          omnifocus_doc.make(:new => :inbox_task, :with_properties => { :name => name, :creation_date => props[:created], :note => desc, :context => github_context })
+          omnifocus_doc.make(:new => :inbox_task,
+                             :with_properties => { :name => name,
+                                                   :creation_date => props[:created],
+                                                   :note => desc,
+                                                   :flagged => true,
+                                                   :context => github_context })
           synced += 1
       end
   end
