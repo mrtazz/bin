@@ -1,0 +1,3 @@
+#!/bin/sh
+
+~/bin/battery Discharging; ~/bin/battery Charging
