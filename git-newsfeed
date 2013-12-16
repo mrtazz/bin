@@ -90,13 +90,14 @@ def format_events(events)
         message = "#{red(event["actor"]["login"])} starred #{green(event["repo"]["name"])}"
       else
     end
-    puts message + " #{purple(time.ago_in_words)}"
+    puts message + " #{purple(time.ago.to_words)}"
   end
 end
 
-def get_userinfo_from_gitconfig
-    token = `git config github.token`.gsub("\n", "")
-    user  = `git config github.username`.gsub("\n", "")
+def get_userinfo_from_gitconfig(enterprise=false)
+    sfx = enterprise ? "-enterprise" : ""
+    token = `git config github#{sfx}.token`.gsub("\n", "")
+    user  = `git config github#{sfx}.user`.gsub("\n", "")
     {:user => user, :token => token}
 end
 

@@ -5,8 +5,17 @@
 #
 
 require 'rubygems'
-require 'faraday'
 require 'json'
+begin
+  require 'faraday'
+rescue LoadError
+  abort "this command needs the faraday gem installed"
+end
+begin
+  require 'time-lord'
+rescue LoadError
+  abort "this command needs the time-lord gem installed"
+end
 
 # colors
 want_color = `git config color.wtf`
@@ -35,7 +44,8 @@ def get_github_notifications(token, host="https://api.github.com",
                       :type  => item["subject"]["type"],
                       :url   => item["subject"]["url"],
                       :html_url => item["repository"]["html_url"],
-                      :repo  => item["repository"]["full_name"]
+                      :repo  => item["repository"]["full_name"],
+                      :updated_at  => item["updated_at"]
                         }}
 end
 
@@ -74,12 +84,13 @@ else
     maxtypelength = 11
 
     notifications.each do |n|
+        time = Time.parse(n[:updated_at])
         padding = maxtypelength - n[:type].length
         type = "#{" "*padding}#{n[:type]}"
         urlpath = n[:url].split("/")[-2..-1].join("/")
         url = "#{n[:html_url]}/#{urlpath}"
         title = n[:title].gsub("\n","").slice(0,75)
-        puts "#{red(type)}: #{title} on <#{yellow(url)}>"
+        puts "#{red(type)}: #{title} on <#{yellow(url)}> updated #{purple(time.ago.to_words)}"
     end
 end
 
