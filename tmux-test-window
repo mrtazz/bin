@@ -1,7 +1,11 @@
 #!/bin/sh
 
 # simple wrapper around fswatch to set the tmux window title based on whether
-# the given command suceeds (exit 0) or not
+# the given command succeeds (exit 0) or not
+#
+# Example:
+# tmux-test-window . "make test"
+#
 
 FSWATCH=`which fswatch`
 
