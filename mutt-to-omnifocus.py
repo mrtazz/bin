@@ -16,6 +16,9 @@ def usage():
 
         -q, --quick-entry
             Use the quick entry panel instead of directly creating a task.
+
+        -c, --context=context
+            Use the provided context for the task
     """
 
 def applescript_escape(string):
@@ -48,7 +51,7 @@ def parse_message(raw):
             "Subject": message.get("Subject"),
             "Body": body}
 
-def send_to_omnifocus(params, quickentry=False):
+def send_to_omnifocus(params, quickentry=False, context="Email"):
     """Take the list of significant headers and create an OmniFocus inbox item
     from these.
     """
@@ -63,7 +66,7 @@ def send_to_omnifocus(params, quickentry=False):
     if quickentry:
         applescript = """
             tell application "OmniFocus"
-                set theContext to context "Email" of default document
+                set theContext to context "%s" of default document
                 tell default document
                     tell quick entry
                         open
@@ -73,16 +76,28 @@ def send_to_omnifocus(params, quickentry=False):
                     end tell
                 end tell
             end tell
-        """ % (name, note)
+        """ % (context, name, note)
     else:
         applescript = """
+            on FindContext(strContext)
+                tell application "OmniFocus"
+                    tell first document
+                        set oContextList to complete strContext as context maximum matches 1
+                        if (oContextList is {}) then
+                        else
+                            return context id (id of item 1 of oContextList)
+                        end if
+                    end tell
+                end tell
+            end FindContext
+
             tell application "OmniFocus"
-                set theContext to context "Email" of default document
+                set theContext to my FindContext("%s")
                 tell default document
                     make new inbox task with properties {name: "%s", note:"%s", context:theContext}
                 end tell
             end tell
-        """ % (name, note)
+        """ % (context, name, note)
 
     # Use osascript and a heredoc to run this Applescript
     os.system("\n".join(["osascript << EOT", applescript, "EOT"]))
@@ -90,8 +105,10 @@ def send_to_omnifocus(params, quickentry=False):
 def main():
     # Check for options
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hq", ["help", "quick-entry"])
-    except getopt.GetoptError:
+        opts, args = getopt.getopt(sys.argv[1:], "hqc",
+                ["help", "quick-entry", "context="])
+    except getopt.GetoptError, e:
+        print e
         usage()
         sys.exit(-1)
 
@@ -103,6 +120,10 @@ def main():
         elif opt in ("-q", "--quick-entry"):
             raw = sys.stdin.read()
             send_to_omnifocus(parse_message(raw), quickentry=True)
+            sys.exit(0)
+        elif opt in ("-c", "--context"):
+            raw = sys.stdin.read()
+            send_to_omnifocus(parse_message(raw), quickentry=False, context=arg)
             sys.exit(0)
 
     # Otherwise fall back to standard operation
