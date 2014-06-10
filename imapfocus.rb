@@ -24,9 +24,22 @@ require "pp"
 require "net/imap"
 
 def add_tasks_to_omnifocus(tasks, existing, the_context)
+  ctxs = the_context.split(":")
+  our_context = nil
+
   omnifocus = Appscript.app('OmniFocus')
   omnifocus_doc = omnifocus.default_document
-  context = omnifocus.default_document.flattened_contexts[the_context]
+
+  if ctxs.length > 1
+    omnifocus_doc.flattened_contexts[ctxs[0]].context.get.each do |context|
+      if context.name.get == ctxs[1]
+        our_context = context
+      end
+    end
+  else
+    our_context = omnifocus.default_document.flattened_contexts[ctxs[0]]
+  end
+
   skipped = 0
   synced  = 0
   tasks.each do |name|
@@ -34,7 +47,7 @@ def add_tasks_to_omnifocus(tasks, existing, the_context)
           skipped += 1
       else
           puts "** Adding #{name}"
-          omnifocus_doc.make(:new => :inbox_task, :with_properties => { :name => name, :context => context })
+          omnifocus_doc.make(:new => :inbox_task, :with_properties => { :name => name, :context => our_context })
           synced += 1
       end
   end
