@@ -64,6 +64,7 @@ def get_tasks_from_omnifocus
   omnifocus_doc.flattened_tasks.get.each do |task|
       name = task.name.get.strip
       created = task.creation_date.get
+      next if task.completed.get
 
       omni_data[name] = Hash.new()
       omni_data[name][:created]  = created
