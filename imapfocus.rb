@@ -46,7 +46,7 @@ def add_tasks_to_omnifocus(tasks, existing, the_context)
       if existing.has_key?(name)
           skipped += 1
       else
-          puts "** Adding #{name}"
+          puts "** Adding #{name} with context #{the_context}"
           omnifocus_doc.make(:new => :inbox_task, :with_properties => { :name => name, :context => our_context })
           synced += 1
       end
