@@ -1,6 +1,6 @@
 #!/bin/sh
 
-TARGET_FILE=$1
+readonly TARGET_FILE=$1
 
 cd `dirname $TARGET_FILE`
 TARGET_FILE=`basename $TARGET_FILE`
