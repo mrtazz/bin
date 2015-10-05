@@ -1,0 +1,45 @@
+#!/bin/sh
+
+USAGE="
+git-get mimics 'go get' for arbitrary git repos. It utilizes the git config to
+get the 'code path' which is the parallel to \$GOPATH and the location where
+all code will be cloned into.
+"
+version() {
+  echo "git get v0.1.0"
+}
+
+usage() {
+  echo ${USAGE}
+  echo
+  echo "usage: git get <repo url>"
+}
+
+main() {
+  if [ "$#" -lt 1 ]; then
+    usage; exit 1
+  fi
+
+  local argument="$1"; shift
+
+  case ${argument} in
+    "-h"|"--help")
+      usage; exit 0
+      ;;
+    "-v"|"--version")
+      version; exit 0
+      ;;
+  esac
+
+  CODEPATH=$(git config --get get.path)
+  if [[ $? != 0 ]]; then
+    echo "No code path found."
+    echo "Please configure it. E.g. git config --global get.path \$HOME/code"
+    exit 1
+  fi
+
+  cd ${CODEPATH}
+  git clone ${argument}
+}
+
+main "$@"
