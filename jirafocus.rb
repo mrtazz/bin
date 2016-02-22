@@ -38,6 +38,7 @@ jira.login(CONFIG["username"], password.strip!)
 # fetch all JIRA tasks
 issues = jira.getIssuesFromFilter(CONFIG["jira_filter_id"])
 
+
 issues.each do |issue|
     jira_data[issue.key] = Hash.new()
     jira_data[issue.key][:summary]  = issue.summary
@@ -64,8 +65,11 @@ omnifocus_jira.flattened_tasks.get.each do |task|
         omni_data[key][:summary]  = summary
         omni_data[key][:reporter] = reporter
         omni_data[key][:created]  = created
+        omni_data[key][:completed]  = task.completed.get
     end
 end
+
+mine_not_assigned = omni_data.select { |key, value| value[:completed] == false }
 
 # sync jira to OF
 skipped = 0
@@ -73,6 +77,7 @@ synced  = 0
 jira_data.each do |key,props|
     if omni_data.has_key?(key)
         skipped += 1
+        mine_not_assigned.delete(key)
         ## TODO: update name and reporter if it has changed
     else
         # TODO: fix timezones (inserting as UTC)
@@ -87,3 +92,8 @@ jira_data.each do |key,props|
 end
 
 puts "** Synced #{synced} issues from JIRA to OmniFocus, Skipped #{skipped}"
+
+puts "** #{mine_not_assigned.keys.length} tasks in OmniFocus but not assigned to me:"
+mine_not_assigned.each do |key, props|
+  puts "#{key}: #{props[:summary]} => #{sprintf("#{CONFIG["jira_base_url"]}/browse/%s", key)}"
+end
