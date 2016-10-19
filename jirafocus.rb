@@ -7,18 +7,47 @@
 # username: dschauenberg
 # passworditem: Etsy LDAP
 #
-# jira_filter_id: 333333
+# jql: "assignee = mrtazz"
 #
-# jira_project_prefix: COOLHAX
 # jira_base_url: http://jira.example.com
 
 $VERBOSE = nil
 
 require "rubygems"
-require "jira4r"
+require "faraday"
 require "appscript"
 require "yaml"
 require "pp"
+require "uri"
+require 'json'
+
+# Public: get all issues for a given JQL search
+#
+# Params:
+#   user     - username for basic auth
+#   password - password for basic auth
+#   jql      - jql to use for searching for issues
+#   host     - jira base URL
+#   path     - path to issues API
+#
+# Returns an array of Jira issues of the format [{:summary, :reporter, :url,
+# :created, :description, :key}]
+def get_jira_issues(user, password, jql, host="https://jira.example.com", path="/rest/api/2/search")
+  conn = Faraday.new(:url => host)
+  conn.basic_auth(user, password)
+  res = conn.get do |req|
+    req.url path
+    req.params['jql'] = jql
+  end
+  res = JSON.parse(res.body)
+  res["issues"].map! {|item| {:summary => item["fields"]["summary"],
+                    :reporter => item["fields"]["reporter"]["name"],
+                    :created => DateTime.strptime(item["fields"]["created"],'%Y-%m-%dT%H:%M:%S.%L%z').strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    :description => item["fields"]["description"],
+                    :key => item["key"]
+                    }}
+end
+
 
 jira_data = Hash.new()
 omni_data = Hash.new()
@@ -26,25 +55,21 @@ omni_data = Hash.new()
 CONFIG = YAML.load_file(File.join(ENV["HOME"], ".jirafocus"))
 
 # connect to JIRA
-jira = Jira4R::JiraTool.new(2, CONFIG["jira_base_url"])
 cmd = "findpassword.sh \"#{CONFIG["passworditem"]}\""
 password = `#{cmd}`
 if password.empty?
   $stderr.puts "Couldn't get password, aborting..."
   exit 1
 end
-jira.login(CONFIG["username"], password.strip!)
 
-# fetch all JIRA tasks
-issues = jira.getIssuesFromFilter(CONFIG["jira_filter_id"])
-
+issues = get_jira_issues(CONFIG["username"], password.strip!, CONFIG["jql"], CONFIG["jira_base_url"])
 
 issues.each do |issue|
-    jira_data[issue.key] = Hash.new()
-    jira_data[issue.key][:summary]  = issue.summary
-    jira_data[issue.key][:reporter] = issue.reporter
-    jira_data[issue.key][:created]  = issue.created
-    jira_data[issue.key][:desc]     = issue.description
+    jira_data[issue[:key]] = Hash.new()
+    jira_data[issue[:key]][:summary]     = issue[:summary]
+    jira_data[issue[:key]][:reporter]    = issue[:reporter]
+    jira_data[issue[:key]][:created]     = issue[:created]
+    jira_data[issue[:key]][:description] = issue[:description]
 end
 
 # connect to OmniFocus
@@ -75,20 +100,24 @@ mine_not_assigned = omni_data.select { |key, value| value[:completed] == false }
 skipped = 0
 synced  = 0
 jira_data.each do |key,props|
-    if omni_data.has_key?(key)
-        skipped += 1
-        mine_not_assigned.delete(key)
-        ## TODO: update name and reporter if it has changed
-    else
-        # TODO: fix timezones (inserting as UTC)
-        name = sprintf("%s - %s (%s)", key, props[:summary], props[:reporter])
-        link = sprintf("#{CONFIG["jira_base_url"]}/browse/%s", key)
-        desc = sprintf("REF: %s\n\n%s", link, props[:desc])
+  if omni_data.has_key?(key)
+    skipped += 1
+    mine_not_assigned.delete(key)
+    ## TODO: update name and reporter if it has changed
+  else
+    # TODO: fix timezones (inserting as UTC)
+    name = sprintf("%s - %s (%s)", key, props[:summary], props[:reporter])
+    link = sprintf("#{CONFIG["jira_base_url"]}/browse/%s", key)
+    desc = sprintf("REF: %s\n\n%s", link, props[:description])
 
-        puts "** Adding #{key}"
-        omnifocus_jira.make(:new => :inbox_task, :with_properties => { :name => name, :creation_date => props[:created], :note => desc, :context => jira_context })
-        synced += 1
-    end
+    puts "** Adding #{key}"
+    omnifocus_jira.make(:new => :inbox_task,
+                        :with_properties => { :name => name,
+                                              :note => desc,
+                                              :context => jira_context })
+    synced += 1
+  end
+
 end
 
 puts "** Synced #{synced} issues from JIRA to OmniFocus, Skipped #{skipped}"
