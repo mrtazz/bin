@@ -44,7 +44,7 @@ CONFIG.each do |c|
   TOKEN   = c["TOKEN"]
   CONTEXT = c["CONTEXT"]
   GHNAME  = c["GHNAME"]
-  GHSEARCHTERM  = c["GHSEARCHTERM"]
+  GHSEARCHTERMS  = c["GHSEARCHTERMS"]
 
   # Public: get all issues for a user corresponding to a given OAuth token
   # across owned, member and organization repositories
@@ -60,20 +60,24 @@ CONFIG.each do |c|
   # Returns an array of GitHub issues of the format [{:title, :repo, :url}]
   def get_github_issues(token, host="https://api.github.com", path="/search/issues")
     issues = []
-    conn = Faraday.new(:url => host, request: { params_encoder: DoNotEncoder })
-    res = conn.get do |req|
-      req.url path, :q => GHSEARCHTERM
-      req.headers['Authorization'] = "token #{token}"
-    end
-    res = JSON.parse(res.body)
-    res["items"].each do |item|
-      repo = item["repository_url"].split("/").last(2).join("/")
-      issues << {
-        :summary => item["title"],
-        :repo => repo,
-        :url => item["html_url"],
-        :reporter => item["user"]["login"]
-      }
+
+    GHSEARCHTERMS.each do |term|
+      conn = Faraday.new(:url => host, request: { params_encoder: DoNotEncoder })
+      res = conn.get do |req|
+        req.url path, :q => term
+        req.headers['Authorization'] = "token #{token}"
+      end
+      res = JSON.parse(res.body)
+      res["items"].each do |item|
+        repo = item["repository_url"].split("/").last(2).join("/")
+
+        issues << {
+          :summary => item["title"],
+          :repo => repo,
+          :url => item["html_url"],
+          :reporter => item["user"]["login"]
+        }
+      end
     end
 
     return issues
